@@ -1,38 +1,29 @@
-// admin/js/admin-manager.js
-
 /**
- * AdminManager - Gestión principal del panel de administración
+ * AdminManager - Módulo de gestión del panel de administración
+ * Maneja todas las operaciones CRUD y la lógica del panel admin
  */
 class AdminManager {
     constructor() {
+        this.products = [];
+        this.categories = [];
+        this.sales = [];
         this.currentPage = 'dashboard';
-        this.editingItemId = null;
-        this.initializeData();
-    }
-
-    /**
-     * Inicializa los datos del sistema
-     */
-    initializeData() {
-        // Cargar datos desde localStorage o inicializar con valores por defecto
-        this.products = JSON.parse(localStorage.getItem('admin_products')) || [];
-        this.categories = JSON.parse(localStorage.getItem('admin_categories')) || this.getDefaultCategories();
-        this.sales = JSON.parse(localStorage.getItem('admin_sales')) || [];
-        this.customers = JSON.parse(localStorage.getItem('admin_customers')) || [];
-        this.inventory = JSON.parse(localStorage.getItem('admin_inventory')) || [];
-        this.settings = JSON.parse(localStorage.getItem('admin_settings')) || this.getDefaultSettings();
         
-        // Guardar categorías por defecto si no existen
-        if (!localStorage.getItem('admin_categories')) {
-            localStorage.setItem('admin_categories', JSON.stringify(this.categories));
-        }
+        // Inicializar datos por defecto
+        this.initializeDefaultData();
+        
+        // Cargar datos del localStorage
+        this.loadData();
+        
+        // Configurar event listeners
+        this.setupEventListeners();
     }
 
     /**
-     * Obtiene categorías por defecto
+     * Inicializar datos por defecto si no existen
      */
-    getDefaultCategories() {
-        return [
+    initializeDefaultData() {
+        const defaultCategories = [
             { id: 1, name: "Pantallas", description: "Displays LCD, LED, OLED", icon: "fas fa-tv" },
             { id: 2, name: "Teclados", description: "Teclados de reemplazo", icon: "fas fa-keyboard" },
             { id: 3, name: "Baterías", description: "Baterías para laptops", icon: "fas fa-battery-three-quarters" },
@@ -40,33 +31,95 @@ class AdminManager {
             { id: 5, name: "Memorias", description: "RAM DDR3, DDR4, DDR5", icon: "fas fa-memory" },
             { id: 6, name: "Almacenamiento", description: "SSD, HDD, M.2 NVMe", icon: "fas fa-hdd" }
         ];
+
+        // Solo inicializar si no hay datos previos
+        if (!localStorage.getItem('admin_categories')) {
+            localStorage.setItem('admin_categories', JSON.stringify(defaultCategories));
+        }
     }
 
     /**
-     * Obtiene configuración por defecto
+     * Cargar datos del localStorage
      */
-    getDefaultSettings() {
-        return {
-            company: {
-                name: "PrismaTech",
-                rfc: "",
-                phone: "(238) 123-4567",
-                whatsapp: "5212381234567",
-                email: "info@prismatech.mx",
-                website: "www.prismatech.mx",
-                address: "Teziutlán, Puebla, México"
-            },
-            system: {
-                enableNotifications: true,
-                enableStockAlerts: true,
-                defaultMinStock: 5,
-                currency: "MXN"
-            }
-        };
+    loadData() {
+        this.products = JSON.parse(localStorage.getItem('admin_products')) || [];
+        this.categories = JSON.parse(localStorage.getItem('admin_categories')) || [];
+        this.sales = JSON.parse(localStorage.getItem('admin_sales')) || [];
     }
 
     /**
-     * Cambia de página
+     * Guardar datos en localStorage
+     */
+    saveData() {
+        localStorage.setItem('admin_products', JSON.stringify(this.products));
+        localStorage.setItem('admin_categories', JSON.stringify(this.categories));
+        localStorage.setItem('admin_sales', JSON.stringify(this.sales));
+    }
+
+    /**
+     * Configurar event listeners principales
+     */
+    setupEventListeners() {
+        // Navigation
+        document.querySelectorAll('.nav-item[data-page]').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.showPage(item.dataset.page);
+            });
+        });
+
+        // Search functionality
+        const productsSearch = document.getElementById('products-search');
+        if (productsSearch) {
+            productsSearch.addEventListener('input', () => this.renderProducts());
+        }
+
+        const productsCategoryFilter = document.getElementById('products-category-filter');
+        if (productsCategoryFilter) {
+            productsCategoryFilter.addEventListener('change', () => this.renderProducts());
+        }
+
+        // Product price auto-fill in sales
+        const saleProduct = document.getElementById('sale-product');
+        if (saleProduct) {
+            saleProduct.addEventListener('change', () => {
+                const selectedOption = saleProduct.options[saleProduct.selectedIndex];
+                if (selectedOption.dataset.price) {
+                    document.getElementById('sale-price').value = selectedOption.dataset.price;
+                }
+            });
+        }
+
+        // Modal close on outside click
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-overlay')) {
+                e.target.classList.remove('active');
+            }
+        });
+
+        // Form submissions
+        this.setupFormListeners();
+    }
+
+    /**
+     * Configurar listeners para formularios
+     */
+    setupFormListeners() {
+        const companyForm = document.getElementById('company-form');
+        if (companyForm) {
+            companyForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.saveCompanySettings();
+            });
+        }
+    }
+
+    // ===========================================
+    // NAVEGACIÓN Y PÁGINAS
+    // ===========================================
+
+    /**
+     * Mostrar página específica
      */
     showPage(pageId) {
         // Actualizar navegación
@@ -74,27 +127,27 @@ class AdminManager {
             item.classList.remove('active');
         });
         const navItem = document.querySelector(`[data-page="${pageId}"]`);
-        if (navItem) navItem.classList.add('active');
+        if (navItem) {
+            navItem.classList.add('active');
+        }
 
-        // Mostrar página
+        // Mostrar contenido de página
         document.querySelectorAll('.page-content').forEach(page => {
             page.classList.remove('active');
         });
-        const page = document.getElementById(`${pageId}-page`);
-        if (page) page.classList.add('active');
+        const pageElement = document.getElementById(`${pageId}-page`);
+        if (pageElement) {
+            pageElement.classList.add('active');
+        }
+
+        this.currentPage = pageId;
 
         // Cargar datos de la página
-        this.currentPage = pageId;
         this.loadPageData(pageId);
-        
-        // Cerrar sidebar en móvil
-        if (window.innerWidth <= 768) {
-            document.getElementById('sidebar').classList.remove('mobile-open');
-        }
     }
 
     /**
-     * Carga los datos de una página específica
+     * Cargar datos específicos de cada página
      */
     loadPageData(pageId) {
         switch(pageId) {
@@ -107,185 +160,67 @@ class AdminManager {
             case 'categories':
                 this.loadCategories();
                 break;
-            case 'inventory':
-                this.loadInventory();
-                break;
             case 'sales':
                 this.loadSales();
                 break;
-            case 'customers':
-                this.loadCustomers();
-                break;
-            case 'reports':
-                this.loadReports();
-                break;
-            case 'settings':
-                this.loadSettings();
-                break;
         }
     }
 
+    // ===========================================
+    // DASHBOARD
+    // ===========================================
+
     /**
-     * Carga el dashboard
+     * Cargar datos del dashboard
      */
     loadDashboard() {
-        // Actualizar estadísticas
         document.getElementById('total-products').textContent = this.products.length;
         document.getElementById('total-categories').textContent = this.categories.length;
-        document.getElementById('total-quotes').textContent = this.sales.length;
-        document.getElementById('total-customers').textContent = this.customers.length;
-        
-        // Actualizar fecha actual
-        const now = new Date();
-        document.getElementById('current-date').textContent = 
-            now.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-        
-        // Cargar actividad reciente
-        this.loadRecentActivity();
-        
-        // Cargar productos con bajo stock
-        this.loadLowStockProducts();
+        document.getElementById('total-sales').textContent = this.sales.length;
     }
 
-    /**
-     * Carga actividad reciente
-     */
-    loadRecentActivity() {
-        const container = document.getElementById('recent-activity');
-        const activities = this.getRecentActivities();
-        
-        if (activities.length === 0) {
-            container.innerHTML = '<p class="text-muted">No hay actividad reciente</p>';
-            return;
-        }
-        
-        container.innerHTML = activities.map(activity => `
-            <div class="activity-item">
-                <div class="activity-icon ${activity.type}">
-                    <i class="${activity.icon}"></i>
-                </div>
-                <div class="activity-details">
-                    <div class="activity-title">${activity.title}</div>
-                    <div class="activity-time">${this.getTimeAgo(activity.date)}</div>
-                </div>
-            </div>
-        `).join('');
-    }
+    // ===========================================
+    // GESTIÓN DE PRODUCTOS
+    // ===========================================
 
     /**
-     * Obtiene actividades recientes
-     */
-    getRecentActivities() {
-        const activities = [];
-        
-        // Agregar ventas recientes
-        this.sales.slice(-3).forEach(sale => {
-            activities.push({
-                type: 'success',
-                icon: 'fas fa-shopping-cart',
-                title: `Nueva cotización para ${sale.customer}`,
-                date: new Date(sale.date)
-            });
-        });
-        
-        // Agregar productos agregados recientemente
-        this.products.slice(-2).forEach(product => {
-            activities.push({
-                type: 'warning',
-                icon: 'fas fa-box',
-                title: `Producto agregado: ${product.name}`,
-                date: new Date(product.created_at || Date.now())
-            });
-        });
-        
-        return activities.sort((a, b) => b.date - a.date).slice(0, 5);
-    }
-
-    /**
-     * Carga productos con bajo stock
-     */
-    loadLowStockProducts() {
-        const container = document.getElementById('low-stock-products');
-        const lowStock = this.products.filter(p => {
-            const inv = this.inventory.find(i => i.product_id === p.id);
-            return inv && inv.stock < (inv.min_stock || this.settings.system.defaultMinStock);
-        });
-        
-        if (lowStock.length === 0) {
-            container.innerHTML = '<p class="text-muted">No hay productos con stock bajo</p>';
-            return;
-        }
-        
-        container.innerHTML = `
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Producto</th>
-                        <th>Stock Actual</th>
-                        <th>Stock Mínimo</th>
-                        <th>Acción</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${lowStock.map(product => {
-                        const inv = this.inventory.find(i => i.product_id === product.id);
-                        return `
-                            <tr>
-                                <td>${product.name}</td>
-                                <td><span class="badge badge-danger">${inv.stock}</span></td>
-                                <td>${inv.min_stock || this.settings.system.defaultMinStock}</td>
-                                <td>
-                                    <button class="btn btn-sm btn-primary" onclick="adminManager.adjustInventory(${product.id})">
-                                        <i class="fas fa-plus"></i> Reabastecer
-                                    </button>
-                                </td>
-                            </tr>
-                        `;
-                    }).join('')}
-                </tbody>
-            </table>
-        `;
-    }
-
-    /**
-     * Carga productos
+     * Cargar página de productos
      */
     loadProducts() {
-        const tbody = document.getElementById('products-table');
         const categoryFilter = document.getElementById('products-category-filter');
         
         // Cargar filtro de categorías
-        categoryFilter.innerHTML = '<option value="">Todas las categorías</option>' +
-            this.categories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('');
-        
+        if (categoryFilter) {
+            categoryFilter.innerHTML = '<option value="">Todas las categorías</option>' +
+                this.categories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('');
+        }
+
         this.renderProducts();
     }
 
     /**
-     * Renderiza productos
+     * Renderizar lista de productos
      */
     renderProducts() {
         const tbody = document.getElementById('products-table');
-        const searchTerm = document.getElementById('products-search').value.toLowerCase();
-        const categoryFilter = document.getElementById('products-category-filter').value;
-        const statusFilter = document.getElementById('products-status-filter').value;
+        if (!tbody) return;
+
+        const searchInput = document.getElementById('products-search');
+        const categoryFilter = document.getElementById('products-category-filter');
         
-        let filtered = this.products.filter(product => {
+        const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+        const categoryFilterValue = categoryFilter ? categoryFilter.value : '';
+
+        let filteredProducts = this.products.filter(product => {
             const matchesSearch = !searchTerm || 
                 product.name.toLowerCase().includes(searchTerm) ||
-                product.sku.toLowerCase().includes(searchTerm);
-            const matchesCategory = !categoryFilter || product.category_id == categoryFilter;
-            const matchesStatus = !statusFilter || 
-                (statusFilter === 'active' && product.active !== false) ||
-                (statusFilter === 'inactive' && product.active === false);
-            
-            return matchesSearch && matchesCategory && matchesStatus;
+                product.sku.toLowerCase().includes(searchTerm) ||
+                (product.part_number && product.part_number.toLowerCase().includes(searchTerm));
+            const matchesCategory = !categoryFilterValue || product.category_id == categoryFilterValue;
+            return matchesSearch && matchesCategory;
         });
-        
-        // Actualizar contador
-        document.getElementById('products-count').textContent = `${filtered.length} productos`;
-        
-        if (filtered.length === 0) {
+
+        if (filteredProducts.length === 0) {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="6" class="empty-state">
@@ -296,13 +231,9 @@ class AdminManager {
             `;
             return;
         }
-        
-        tbody.innerHTML = filtered.map(product => {
+
+        tbody.innerHTML = filteredProducts.map(product => {
             const category = this.categories.find(c => c.id === product.category_id);
-            const inv = this.inventory.find(i => i.product_id === product.id);
-            const stock = inv ? inv.stock : 0;
-            const stockStatus = stock === 0 ? 'danger' : stock < 10 ? 'warning' : 'success';
-            
             return `
                 <tr>
                     <td>
@@ -310,13 +241,9 @@ class AdminManager {
                         <small style="color: var(--gray-500);">${product.brand || ''}</small>
                     </td>
                     <td>${category ? category.name : 'Sin categoría'}</td>
+                    <td>$${product.price.toLocaleString()}</td>
                     <td><code>${product.sku}</code></td>
-                    <td><span class="badge badge-${stockStatus}">${stock}</span></td>
-                    <td>
-                        <span class="badge badge-${product.active !== false ? 'success' : 'danger'}">
-                            ${product.active !== false ? 'Activo' : 'Inactivo'}
-                        </span>
-                    </td>
+                    <td><span class="badge badge-success">Activo</span></td>
                     <td>
                         <button class="btn btn-sm btn-secondary" onclick="adminManager.editProduct(${product.id})">
                             <i class="fas fa-edit"></i>
@@ -331,242 +258,467 @@ class AdminManager {
     }
 
     /**
-     * Abre modal de producto
+     * Abrir modal de producto
      */
     openProductModal(productId = null) {
-        this.editingItemId = productId;
-        const product = productId ? this.products.find(p => p.id === productId) : null;
+        const modal = document.getElementById('product-modal');
+        const form = document.getElementById('product-form');
+        const categorySelect = document.getElementById('product-category');
         
-        const modalHtml = `
-            <div class="modal-overlay active" id="product-modal">
-                <div class="modal">
-                    <div class="modal-header">
-                        <h3 class="modal-title">${productId ? 'Editar' : 'Nuevo'} Producto</h3>
-                        <button class="modal-close" onclick="adminManager.closeModal('product-modal')">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                        <form id="product-form">
-                            <div class="form-group">
-                                <label class="form-label">Nombre del Producto *</label>
-                                <input type="text" class="form-control" id="product-name" required 
-                                       value="${product ? product.name : ''}">
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label class="form-label">Categoría *</label>
-                                    <select class="form-control" id="product-category" required>
-                                        <option value="">Seleccionar categoría</option>
-                                        ${this.categories.map(cat => `
-                                            <option value="${cat.id}" ${product && product.category_id === cat.id ? 'selected' : ''}>
-                                                ${cat.name}
-                                            </option>
-                                        `).join('')}
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Marca</label>
-                                    <input type="text" class="form-control" id="product-brand" 
-                                           value="${product ? product.brand || '' : ''}">
-                                </div>
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label class="form-label">SKU *</label>
-                                    <input type="text" class="form-control" id="product-sku" required 
-                                           value="${product ? product.sku : ''}">
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Número de Parte</label>
-                                    <input type="text" class="form-control" id="product-part-number" 
-                                           value="${product ? product.part_number || '' : ''}">
-                                </div>
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label class="form-label">Stock Inicial</label>
-                                    <input type="number" class="form-control" id="product-stock" value="0" min="0">
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Stock Mínimo</label>
-                                    <input type="number" class="form-control" id="product-min-stock" 
-                                           value="${this.settings.system.defaultMinStock}" min="0">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Descripción</label>
-                                <textarea class="form-control" id="product-description" rows="3">${product ? product.description || '' : ''}</textarea>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">
-                                    <input type="checkbox" id="product-active" ${!product || product.active !== false ? 'checked' : ''}>
-                                    Producto activo
-                                </label>
-                            </div>
-                        </form>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn btn-secondary" onclick="adminManager.closeModal('product-modal')">Cancelar</button>
-                        <button class="btn btn-primary" onclick="adminManager.saveProduct()">
-                            <i class="fas fa-save"></i> Guardar
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        document.getElementById('modals-container').innerHTML = modalHtml;
+        // Cargar categorías
+        if (categorySelect) {
+            categorySelect.innerHTML = '<option value="">Seleccionar categoría</option>' +
+                this.categories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('');
+        }
+
+        if (productId) {
+            const product = this.products.find(p => p.id === productId);
+            if (product) {
+                document.getElementById('product-modal-title').textContent = 'Editar Producto';
+                document.getElementById('product-id').value = product.id;
+                document.getElementById('product-name').value = product.name;
+                document.getElementById('product-category').value = product.category_id;
+                document.getElementById('product-brand').value = product.brand || '';
+                document.getElementById('product-sku').value = product.sku;
+                document.getElementById('product-part-number').value = product.part_number || '';
+                document.getElementById('product-price').value = product.price;
+                document.getElementById('product-description').value = product.description || '';
+                document.getElementById('product-icon').value = product.icon || '';
+            }
+        } else {
+            document.getElementById('product-modal-title').textContent = 'Nuevo Producto';
+            if (form) form.reset();
+            document.getElementById('product-id').value = '';
+        }
+
+        if (modal) {
+            modal.classList.add('active');
+        }
     }
 
     /**
-     * Guarda producto
+     * Guardar producto
      */
     saveProduct() {
+        const id = document.getElementById('product-id').value;
         const productData = {
             name: document.getElementById('product-name').value,
             category_id: parseInt(document.getElementById('product-category').value),
             brand: document.getElementById('product-brand').value,
             sku: document.getElementById('product-sku').value,
             part_number: document.getElementById('product-part-number').value,
+            price: parseFloat(document.getElementById('product-price').value),
             description: document.getElementById('product-description').value,
-            active: document.getElementById('product-active').checked,
-            icon: this.categories.find(c => c.id === parseInt(document.getElementById('product-category').value))?.icon || 'fas fa-cube'
+            icon: document.getElementById('product-icon').value || 'fas fa-cube'
         };
-        
-        if (this.editingItemId) {
+
+        // Validación básica
+        if (!productData.name || !productData.category_id || !productData.sku || !productData.price) {
+            alert('Por favor completa todos los campos requeridos.');
+            return;
+        }
+
+        if (id) {
             // Editar producto existente
-            const index = this.products.findIndex(p => p.id === this.editingItemId);
+            const index = this.products.findIndex(p => p.id == id);
             if (index !== -1) {
                 this.products[index] = { ...this.products[index], ...productData };
             }
         } else {
             // Crear nuevo producto
             productData.id = Date.now();
-            productData.created_at = new Date().toISOString();
             this.products.push(productData);
-            
-            // Crear entrada de inventario
-            const stock = parseInt(document.getElementById('product-stock').value) || 0;
-            const minStock = parseInt(document.getElementById('product-min-stock').value) || this.settings.system.defaultMinStock;
-            
-            this.inventory.push({
-                id: Date.now(),
-                product_id: productData.id,
-                stock: stock,
-                min_stock: minStock,
-                location: 'Almacén Principal'
-            });
-            
-            localStorage.setItem('admin_inventory', JSON.stringify(this.inventory));
         }
-        
-        localStorage.setItem('admin_products', JSON.stringify(this.products));
+
+        this.saveData();
         this.closeModal('product-modal');
         this.renderProducts();
-        this.showToast('Producto guardado correctamente', 'success');
+        this.loadDashboard();
     }
 
     /**
-     * Elimina producto
+     * Editar producto
+     */
+    editProduct(id) {
+        this.openProductModal(id);
+    }
+
+    /**
+     * Eliminar producto
      */
     deleteProduct(id) {
-        if (confirm('¿Estás seguro de eliminar este producto?')) {
+        if (confirm('¿Estás seguro de que quieres eliminar este producto?')) {
             this.products = this.products.filter(p => p.id !== id);
-            this.inventory = this.inventory.filter(i => i.product_id !== id);
-            
-            localStorage.setItem('admin_products', JSON.stringify(this.products));
-            localStorage.setItem('admin_inventory', JSON.stringify(this.inventory));
-            
+            this.saveData();
             this.renderProducts();
-            this.showToast('Producto eliminado', 'warning');
+            this.loadDashboard();
+        }
+    }
+
+    // ===========================================
+    // GESTIÓN DE CATEGORÍAS
+    // ===========================================
+
+    /**
+     * Cargar página de categorías
+     */
+    loadCategories() {
+        this.renderCategories();
+    }
+
+    /**
+     * Renderizar lista de categorías
+     */
+    renderCategories() {
+        const tbody = document.getElementById('categories-table');
+        if (!tbody) return;
+        
+        tbody.innerHTML = this.categories.map(category => {
+            const productCount = this.products.filter(p => p.category_id === category.id).length;
+            return `
+                <tr>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="${category.icon}" style="color: var(--primary-blue);"></i>
+                            <strong>${category.name}</strong>
+                        </div>
+                    </td>
+                    <td>${category.description}</td>
+                    <td>${productCount} productos</td>
+                    <td>
+                        <button class="btn btn-sm btn-secondary" onclick="adminManager.editCategory(${category.id})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="adminManager.deleteCategory(${category.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    /**
+     * Abrir modal de categoría
+     */
+    openCategoryModal(categoryId = null) {
+        const modal = document.getElementById('category-modal');
+        const form = document.getElementById('category-form');
+        
+        if (categoryId) {
+            const category = this.categories.find(c => c.id === categoryId);
+            if (category) {
+                document.getElementById('category-modal-title').textContent = 'Editar Categoría';
+                document.getElementById('category-id').value = category.id;
+                document.getElementById('category-name').value = category.name;
+                document.getElementById('category-description').value = category.description;
+                document.getElementById('category-icon').value = category.icon;
+            }
+        } else {
+            document.getElementById('category-modal-title').textContent = 'Nueva Categoría';
+            if (form) form.reset();
+            document.getElementById('category-id').value = '';
+        }
+
+        if (modal) {
+            modal.classList.add('active');
         }
     }
 
     /**
-     * Muestra notificación toast
+     * Guardar categoría
      */
-    showToast(message, type = 'success') {
-        const container = document.getElementById('toast-container');
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        toast.innerHTML = `
-            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'times-circle'}"></i>
-            <span>${message}</span>
-        `;
-        
-        container.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
+    saveCategory() {
+        const id = document.getElementById('category-id').value;
+        const categoryData = {
+            name: document.getElementById('category-name').value,
+            description: document.getElementById('category-description').value,
+            icon: document.getElementById('category-icon').value || 'fas fa-tag'
+        };
+
+        // Validación básica
+        if (!categoryData.name) {
+            alert('Por favor ingresa el nombre de la categoría.');
+            return;
+        }
+
+        if (id) {
+            const index = this.categories.findIndex(c => c.id == id);
+            if (index !== -1) {
+                this.categories[index] = { ...this.categories[index], ...categoryData };
+            }
+        } else {
+            categoryData.id = Date.now();
+            this.categories.push(categoryData);
+        }
+
+        this.saveData();
+        this.closeModal('category-modal');
+        this.renderCategories();
+        this.loadDashboard();
     }
 
     /**
-     * Cierra modal
+     * Editar categoría
+     */
+    editCategory(id) {
+        this.openCategoryModal(id);
+    }
+
+    /**
+     * Eliminar categoría
+     */
+    deleteCategory(id) {
+        const productCount = this.products.filter(p => p.category_id === id).length;
+        if (productCount > 0) {
+            alert('No se puede eliminar esta categoría porque tiene productos asociados.');
+            return;
+        }
+        
+        if (confirm('¿Estás seguro de que quieres eliminar esta categoría?')) {
+            this.categories = this.categories.filter(c => c.id !== id);
+            this.saveData();
+            this.renderCategories();
+            this.loadDashboard();
+        }
+    }
+
+    // ===========================================
+    // GESTIÓN DE VENTAS
+    // ===========================================
+
+    /**
+     * Cargar página de ventas
+     */
+    loadSales() {
+        this.renderSales();
+    }
+
+    /**
+     * Renderizar lista de ventas
+     */
+    renderSales() {
+        const tbody = document.getElementById('sales-table');
+        if (!tbody) return;
+        
+        if (this.sales.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="empty-state">
+                        <i class="fas fa-shopping-cart"></i>
+                        <div>No hay ventas registradas</div>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = this.sales.map(sale => {
+            const product = this.products.find(p => p.id === sale.product_id);
+            const statusClass = sale.status === 'vendido' ? 'badge-success' : 
+                              sale.status === 'entregado' ? 'badge-success' : 'badge-warning';
+            
+            return `
+                <tr>
+                    <td>${new Date(sale.date).toLocaleDateString()}</td>
+                    <td>
+                        <div><strong>${sale.customer}</strong></div>
+                        <small style="color: var(--gray-500);">${sale.phone || ''}</small>
+                    </td>
+                    <td>${product ? product.name : 'Producto eliminado'}</td>
+                    <td>${sale.quantity}</td>
+                    <td>$${(sale.price * sale.quantity).toLocaleString()}</td>
+                    <td><span class="badge ${statusClass}">${sale.status}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-secondary" onclick="adminManager.editSale(${sale.id})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="adminManager.deleteSale(${sale.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    /**
+     * Abrir modal de venta
+     */
+    openSaleModal(saleId = null) {
+        const modal = document.getElementById('sale-modal');
+        const productSelect = document.getElementById('sale-product');
+        
+        // Cargar productos
+        if (productSelect) {
+            productSelect.innerHTML = '<option value="">Seleccionar producto</option>' +
+                this.products.map(p => `<option value="${p.id}" data-price="${p.price}">${p.name} - $${p.price}</option>`).join('');
+        }
+
+        if (saleId) {
+            const sale = this.sales.find(s => s.id === saleId);
+            if (sale) {
+                document.getElementById('sale-customer').value = sale.customer;
+                document.getElementById('sale-phone').value = sale.phone || '';
+                document.getElementById('sale-product').value = sale.product_id;
+                document.getElementById('sale-quantity').value = sale.quantity;
+                document.getElementById('sale-price').value = sale.price;
+                document.getElementById('sale-status').value = sale.status;
+                document.getElementById('sale-notes').value = sale.notes || '';
+            }
+        } else {
+            const form = document.getElementById('sale-form');
+            if (form) form.reset();
+            document.getElementById('sale-quantity').value = 1;
+        }
+
+        if (modal) {
+            modal.classList.add('active');
+        }
+    }
+
+    /**
+     * Guardar venta
+     */
+    saveSale() {
+        const saleData = {
+            customer: document.getElementById('sale-customer').value,
+            phone: document.getElementById('sale-phone').value,
+            product_id: parseInt(document.getElementById('sale-product').value),
+            quantity: parseInt(document.getElementById('sale-quantity').value),
+            price: parseFloat(document.getElementById('sale-price').value),
+            status: document.getElementById('sale-status').value,
+            notes: document.getElementById('sale-notes').value,
+            date: new Date().toISOString()
+        };
+
+        // Validación básica
+        if (!saleData.customer || !saleData.product_id || !saleData.quantity || !saleData.price) {
+            alert('Por favor completa todos los campos requeridos.');
+            return;
+        }
+
+        saleData.id = Date.now();
+        this.sales.push(saleData);
+
+        this.saveData();
+        this.closeModal('sale-modal');
+        this.renderSales();
+        this.loadDashboard();
+    }
+
+    /**
+     * Editar venta
+     */
+    editSale(id) {
+        this.openSaleModal(id);
+    }
+
+    /**
+     * Eliminar venta
+     */
+    deleteSale(id) {
+        if (confirm('¿Estás seguro de que quieres eliminar esta venta?')) {
+            this.sales = this.sales.filter(s => s.id !== id);
+            this.saveData();
+            this.renderSales();
+            this.loadDashboard();
+        }
+    }
+
+    // ===========================================
+    // CONFIGURACIÓN
+    // ===========================================
+
+    /**
+     * Guardar configuración de la empresa
+     */
+    saveCompanySettings() {
+        // Aquí se implementaría la lógica para guardar la configuración
+        // Por ahora solo mostramos una confirmación
+        alert('Configuración guardada exitosamente');
+    }
+
+    // ===========================================
+    // UTILIDADES Y MODALES
+    // ===========================================
+
+    /**
+     * Cerrar modal
      */
     closeModal(modalId) {
         const modal = document.getElementById(modalId);
         if (modal) {
             modal.classList.remove('active');
-            setTimeout(() => modal.remove(), 300);
         }
     }
 
     /**
-     * Toggle sidebar móvil
+     * Obtener productos para exportación/API
      */
-    toggleSidebar() {
-        document.getElementById('sidebar').classList.toggle('mobile-open');
+    getProducts() {
+        return this.products;
     }
 
     /**
-     * Obtiene tiempo transcurrido
+     * Obtener categorías para exportación/API
      */
-    getTimeAgo(date) {
-        const seconds = Math.floor((new Date() - date) / 1000);
-        
-        if (seconds < 60) return 'Hace un momento';
-        if (seconds < 3600) return `Hace ${Math.floor(seconds / 60)} minutos`;
-        if (seconds < 86400) return `Hace ${Math.floor(seconds / 3600)} horas`;
-        if (seconds < 604800) return `Hace ${Math.floor(seconds / 86400)} días`;
-        
-        return date.toLocaleDateString('es-MX');
+    getCategories() {
+        return this.categories;
     }
 
     /**
-     * Exporta datos
+     * Obtener ventas para exportación/API
      */
-    exportData() {
-        const data = {
-            products: this.products,
-            categories: this.categories,
-            sales: this.sales,
-            customers: this.customers,
-            inventory: this.inventory,
-            settings: this.settings,
-            exportDate: new Date().toISOString()
-        };
-        
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `prismatech_backup_${new Date().toISOString().split('T')[0]}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-        
-        this.showToast('Datos exportados correctamente', 'success');
+    getSales() {
+        return this.sales;
     }
 
     /**
-     * Cierra sesión
+     * Importar datos (útil para migraciones)
      */
-    logout() {
-        if (confirm('¿Deseas cerrar sesión?')) {
-            window.location.href = '../index.html';
+    importData(products = null, categories = null, sales = null) {
+        if (products) this.products = products;
+        if (categories) this.categories = categories;
+        if (sales) this.sales = sales;
+        
+        this.saveData();
+        this.loadPageData(this.currentPage);
+    }
+
+    /**
+     * Limpiar todos los datos
+     */
+    clearAllData() {
+        if (confirm('¿Estás seguro de que quieres eliminar todos los datos? Esta acción no se puede deshacer.')) {
+            this.products = [];
+            this.categories = [];
+            this.sales = [];
+            this.saveData();
+            this.initializeDefaultData();
+            this.loadData();
+            this.loadPageData(this.currentPage);
         }
     }
 }
 
-// Crear instancia global
-window.adminManager = new AdminManager();
+// Funciones globales para compatibilidad con el HTML existente
+window.showPage = (pageId) => window.adminManager.showPage(pageId);
+window.openProductModal = (productId) => window.adminManager.openProductModal(productId);
+window.saveProduct = () => window.adminManager.saveProduct();
+window.editProduct = (id) => window.adminManager.editProduct(id);
+window.deleteProduct = (id) => window.adminManager.deleteProduct(id);
+window.openCategoryModal = (categoryId) => window.adminManager.openCategoryModal(categoryId);
+window.saveCategory = () => window.adminManager.saveCategory();
+window.editCategory = (id) => window.adminManager.editCategory(id);
+window.deleteCategory = (id) => window.adminManager.deleteCategory(id);
+window.openSaleModal = (saleId) => window.adminManager.openSaleModal(saleId);
+window.saveSale = () => window.adminManager.saveSale();
+window.editSale = (id) => window.adminManager.editSale(id);
+window.deleteSale = (id) => window.adminManager.deleteSale(id);
+window.closeModal = (modalId) => window.adminManager.closeModal(modalId);
+
+// Inicializar cuando el DOM esté listo
+document.addEventListener('DOMContentLoaded', function() {
+    window.adminManager = new AdminManager();
+});
