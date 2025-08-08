@@ -64,7 +64,7 @@
         .logo-icon {
             width: 40px;
             height: 40px;
-            background: var(--primary-gradient);
+            background: none;
             border-radius: 10px;
             display: flex;
             align-items: center;
@@ -516,39 +516,52 @@
             opacity: 1;
             background: var(--primary-blue);
         }
+        .logo-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 160px;  /* Ajusta al tamaño necesario */
+  height: 60px;
+  overflow: hidden; /* Para que la imagen no sobresalga */
+}
+
+.logo-icon img {
+  width: 100%;
+  height: auto;
+  object-fit: contain; /* Para que no se deforme */
+  display: block;
+}
+
     </style>
 </head>
 <body>
-    <!-- Admin Access -->
-    <div class="admin-access">
-        <a href="admin.html" class="admin-btn">
-            <i class="fas fa-cog"></i> Admin
-        </a>
-    </div>
+    
 
-    <!-- Header -->
-    <header class="header">
-        <nav class="navbar">
-            <div class="logo">
-                <div class="logo-icon">PT</div>
-                <span>PrismaTech</span>
-            </div>
-            <div class="contact-info">
-                <div class="contact-item">
-                    <i class="fas fa-phone"></i>
-                    <span>(238) 123-4567</span>
-                </div>
-                <div class="contact-item">
-                    <i class="fas fa-envelope"></i>
-                    <span>info@prismatech.mx</span>
-                </div>
-                <div class="contact-item">
-                    <i class="fas fa-map-marker-alt"></i>
-                    <span>Teziutlán, Puebla</span>
-                </div>
-            </div>
-        </nav>
-    </header>
+<header class="header">
+  <nav class="navbar">
+    <div class="logo">
+      <div class="logo-icon">
+        <img src="images/logo.png" alt="Logo PrismaTech" />
+      </div>
+      
+    </div>
+    <div class="contact-info">
+      <div class="contact-item">
+        <i class="fas fa-phone"></i>
+        <span>(232)-379-3951</span>
+      </div>
+      <div class="contact-item">
+        <i class="fas fa-envelope"></i>
+        <span>contactoprismatech@gmail.com</span>
+      </div>
+      <div class="contact-item">
+        <i class="fas fa-map-marker-alt"></i>
+        <span>Martínez de la Torre, Ver.</span>
+      </div>
+    </div>
+  </nav>
+</header>
+
 
     <!-- Search Section -->
     <section class="search-section">
@@ -602,7 +615,7 @@
     </section>
 
     <!-- WhatsApp Float -->
-    <a href="https://wa.me/5212381234567" class="whatsapp-float" target="_blank" title="Contactar por WhatsApp">
+    <a href="https://wa.me/5212323793951" class="whatsapp-float" target="_blank" title="Contactar por WhatsApp">
         <i class="fab fa-whatsapp"></i>
     </a>
 
@@ -616,9 +629,9 @@
                 </div>
                 <div class="footer-section">
                     <h3>Contacto</h3>
-                    <p><i class="fas fa-phone"></i> (238) 123-4567</p>
-                    <p><i class="fas fa-envelope"></i> info@prismatech.mx</p>
-                    <p><i class="fas fa-map-marker-alt"></i> Teziutlán, Puebla, México</p>
+                    <p><i class="fas fa-phone"></i> (232)-379-3951</p>
+                    <p><i class="fas fa-envelope"></i> contactoprismatech@gmail.com</p>
+                    <p><i class="fas fa-map-marker-alt"></i> Martínez de la Torre, Ver México</p>
                 </div>
                 <div class="footer-section">
                     <h3>Horarios</h3>
@@ -818,7 +831,7 @@
                         <a href="#" class="btn btn-primary" onclick="requestQuote(${product.id})">
                             <i class="fas fa-file-invoice"></i> Cotizar
                         </a>
-                        <a href="https://wa.me/5212381234567?text=Hola,%20me%20interesa%20el%20producto%20${encodeURIComponent(product.name)}%20(${product.sku})" 
+                        <a href="https://wa.me/5212323793951?text=Hola,%20me%20interesa%20el%20producto%20${encodeURIComponent(product.name)}%20(${product.sku})" 
                            class="btn btn-whatsapp" target="_blank">
                             <i class="fab fa-whatsapp"></i> WhatsApp
                         </a>
@@ -876,7 +889,7 @@
             const product = mockProducts.find(p => p.id === productId);
             if (product) {
                 const message = `Hola, me interesa solicitar una cotización para:\n\nProducto: ${product.name}\nSKU: ${product.sku}\nPrecio de referencia: $${product.price.toLocaleString()}\n\n¿Podrían proporcionarme más información?`;
-                window.open(`https://wa.me/5212381234567?text=${encodeURIComponent(message)}`, '_blank');
+                window.open(`https://wa.me/5212323793951?text=${encodeURIComponent(message)}`, '_blank');
             }
         }
 
